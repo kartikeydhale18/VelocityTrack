@@ -12,12 +12,22 @@
   - Strict temporal lock-out based on fiscal quarter months.
 - **Phase 3: Manager Console**
   - Approvals and rejections for employee-submitted goal sheets.
-- **Phase 4: Admin Console**
+  - **New:** Managers can attach detailed feedback/notes directly to approved or rejected sheets.
+- **Phase 4: Admin & HR Console**
   - Real-time aggregated organizational compliance metrics.
   - Client-side, zero-cost `.csv` data exporters for performance reports.
-- **Security**
+  - **New:** HR User Management to dynamically assign Departments and Roles (`employee`, `manager`, `admin`).
+  - **New:** HR Governance dashboard to instantly unlock/revert Approved Goal Sheets back to Draft status for corrections.
+- **Phase 5: Global Organization features**
+  - **New:** Shared Tasks Network allowing HR/Managers to broadcast tasks to specific departments or the entire globe.
+  - **New:** Private "My Approved Goals" Vault hidden securely for employees to review finalized expectations.
+- **Security & Deployment**
   - Firebase Authentication (Google Sign-In).
-  - Role-Based Access Control (RBAC) securely locks navigation and dashboard views based on custom user roles (`employee`, `manager`, `admin`).
+  - Strict Role-Based Access Control (RBAC).
+  - Deployed globally on Firebase Hosting.
+
+## Live Demo
+🌐 **[VelocityTrack Live Site](https://velocitytrack-3e491.web.app)**
 
 ## Tech Stack
 
@@ -49,4 +59,5 @@
 
 ## Managing Roles (RBAC)
 By default, new users logging in via Google are assigned the `employee` role.
-To unlock Manager or Admin functionality, navigate to your Firebase Console -> Firestore Database -> `users` collection -> edit the `role` field on your user document to `"manager"` or `"admin"`. Refresh the application to unlock the restricted tabs.
+To unlock Manager or Admin functionality for the first time, navigate to your Firebase Console -> Firestore Database -> `users` collection -> edit the `role` field on your user document to `"admin"`. 
+Once you are an admin, you can manage all other users' roles directly from the **Admin Console** UI inside the app!
