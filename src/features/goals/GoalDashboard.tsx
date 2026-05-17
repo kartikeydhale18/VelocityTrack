@@ -40,7 +40,7 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
   const [weightage, setWeightage] = useState('');
 
   const [showApprovedModal, setShowApprovedModal] = useState(false);
-  const [approvedGoals, setApprovedGoals] = useState<Goal[]>([]);
+  const [approvedData, setApprovedData] = useState<{ managerNotes?: string, goals: Goal[] } | null>(null);
   const [loadingApproved, setLoadingApproved] = useState(false);
 
   const totalGoals = goals.length;
@@ -105,7 +105,7 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
     setLoadingApproved(true);
     try {
       const result = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
-      setApprovedGoals(result);
+      setApprovedData(result);
     } catch (e) {
       console.error(e);
     } finally {
@@ -162,43 +162,39 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
             <CardContent className="overflow-y-auto p-6 flex-1 space-y-6">
               {loadingApproved ? (
                 <div className="text-center text-slate-500 py-12 animate-pulse">Loading approved goals...</div>
-              ) : approvedGoals.length === 0 ? (
+              ) : !approvedData || approvedData.goals.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl">
                   <FileText size={48} className="mx-auto text-slate-600 mb-4" />
                   <h3 className="text-lg font-bold text-slate-300">No Approved Goals Found</h3>
                   <p className="text-slate-500 mt-2">You do not have an approved goal sheet for FY26 yet.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {approvedGoals.map((sheet: any) => (
-                    <div key={sheet.id} className="col-span-full mb-4">
-                      {sheet.managerNotes && (
-                        <div className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
-                          <strong className="text-amber-400 block mb-1">Manager Notes:</strong>
-                          {sheet.managerNotes}
-                        </div>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {sheet.goals.map((goal: Goal) => (
-                          <div key={goal.id} className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">
-                                {goal.thrustArea}
-                              </span>
-                              <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded">
-                                {goal.weightage}% Weight
-                              </span>
-                            </div>
-                            <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
-                            <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
-                            <div className="text-xs text-slate-500 border-t border-emerald-500/10 pt-2">
-                              Target: <span className="text-emerald-400 font-bold">{goal.target} {goal.unit}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                <div className="space-y-6">
+                  {approvedData.managerNotes && (
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
+                      <strong className="text-amber-400 block mb-1">Manager Notes:</strong>
+                      {approvedData.managerNotes}
                     </div>
-                  ))}
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {approvedData.goals.map((goal: Goal) => (
+                      <div key={goal.id} className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">
+                            {goal.thrustArea}
+                          </span>
+                          <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                            {goal.weightage}% Weight
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
+                        <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
+                        <div className="text-xs text-slate-500 border-t border-emerald-500/10 pt-2">
+                          Target: <span className="text-emerald-400 font-bold">{goal.target} {goal.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
