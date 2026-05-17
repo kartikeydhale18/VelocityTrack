@@ -7,7 +7,8 @@ import LoginScreen from './features/auth/LoginScreen';
 import type { Goal } from './types';
 import { Target, CalendarCheck, ShieldAlert, UserCheck, LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { auth } from './config/firebase';
+import { auth, db } from './config/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 function AppContent() {
   const { user, role, loading } = useAuth();
@@ -98,8 +99,22 @@ function AppContent() {
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-medium text-slate-200">{user.displayName || user.email}</div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded flex w-max ml-auto mt-0.5">
-                  Role: {role || 'employee'}
+                <div className="flex items-center gap-2 mt-0.5 justify-end">
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded flex w-max">
+                    Role: {role || 'employee'}
+                  </div>
+                  {role !== 'admin' && (
+                    <button 
+                      onClick={async () => {
+                        await updateDoc(doc(db, 'users', user.uid), { role: 'admin' });
+                        window.location.reload();
+                      }}
+                      className="text-[10px] uppercase font-bold text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                      title="Hackathon Demo: Elevate to Admin"
+                    >
+                      [Demo] Make Admin
+                    </button>
+                  )}
                 </div>
               </div>
               <button 

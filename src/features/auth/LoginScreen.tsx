@@ -38,7 +38,7 @@ export default function LoginScreen() {
           <Button 
             onClick={handleGoogleLogin} 
             disabled={isLoggingIn}
-            className="w-full h-14 bg-white hover:bg-slate-100 text-slate-900 font-semibold gap-3 text-lg shadow-xl shadow-white/5 transition-all hover:scale-105 active:scale-95"
+            className="w-full h-14 bg-white hover:bg-slate-100 !text-slate-900 font-bold gap-3 text-lg shadow-xl shadow-white/5 transition-all hover:scale-105 active:scale-95"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
             {isLoggingIn ? 'Authenticating...' : 'Sign in with Google'}
