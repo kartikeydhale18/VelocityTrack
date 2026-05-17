@@ -4,11 +4,14 @@ import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
 import { CheckCircle, Clock, AlertTriangle, UserCheck, XCircle, MessageSquare } from 'lucide-react';
 import { fetchPendingSheets, approveGoalSheet, rejectGoalSheet, type PendingSheet } from '../../services/managerService';
+import { fetchAllUsers } from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
+import type { UserProfile } from '../../types';
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
   const [pendingSheets, setPendingSheets] = useState<PendingSheet[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -16,8 +19,12 @@ export default function ManagerDashboard() {
   const loadPendingSheets = async () => {
     setLoading(true);
     try {
-      const sheets = await fetchPendingSheets();
+      const [sheets, usersData] = await Promise.all([
+        fetchPendingSheets(),
+        fetchAllUsers()
+      ]);
       setPendingSheets(sheets);
+      setUsers(usersData as UserProfile[]);
     } catch (error) {
       console.error("Failed to load pending sheets:", error);
     } finally {
@@ -95,7 +102,9 @@ export default function ManagerDashboard() {
                       <span className="text-slate-500 text-sm">{sheet.fiscalYear}</span>
                     </div>
                     <h3 className="text-xl font-bold text-slate-200 mt-2">
-                      Employee ID: <span className="text-amber-400">{sheet.employeeId}</span>
+                      Employee: <span className="text-amber-400">
+                        {users.find(u => u.uid === sheet.employeeId)?.name || sheet.employeeId}
+                      </span>
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-slate-400 mt-2">
                       <span>{sheet.goalCount} Goals Drafted</span>

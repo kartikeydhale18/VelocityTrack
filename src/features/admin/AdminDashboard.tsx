@@ -268,7 +268,9 @@ export default function AdminDashboard() {
               approvedSheets.map(sheet => (
                 <div key={sheet.id} className="p-4 rounded-xl border border-slate-700/50 bg-slate-800/30 flex items-center justify-between">
                   <div>
-                    <h4 className="font-bold text-slate-200">Employee ID: <span className="text-emerald-400">{sheet.employeeId}</span></h4>
+                    <h4 className="font-bold text-slate-200">Employee: <span className="text-emerald-400">
+                      {users.find(u => u.uid === sheet.employeeId)?.name || sheet.employeeId}
+                    </span></h4>
                     <p className="text-sm text-slate-400 mt-1">{sheet.fiscalYear} • {sheet.goalCount} Goals • {sheet.totalWeightage}% Weightage</p>
                   </div>
                   <Button 

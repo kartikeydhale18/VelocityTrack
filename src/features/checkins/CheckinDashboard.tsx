@@ -18,8 +18,12 @@ export default function CheckinDashboard() {
     const loadGoals = async () => {
       setLoading(true);
       try {
-        const approved = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
-        setGoals(approved);
+        const approvedData = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
+        if (approvedData && approvedData.goals) {
+          setGoals(approvedData.goals);
+        } else {
+          setGoals([]);
+        }
       } catch (e) {
         console.error("Failed to load approved goals", e);
       } finally {
