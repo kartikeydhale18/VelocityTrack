@@ -34,18 +34,20 @@ export const fetchPendingSheets = async (): Promise<PendingSheet[]> => {
   return sheets;
 };
 
-export const approveGoalSheet = async (sheetId: string) => {
+export const approveGoalSheet = async (sheetId: string, notes: string = ''): Promise<void> => {
   const sheetRef = doc(db, "goalSheets", sheetId);
   await updateDoc(sheetRef, {
     status: "approved",
-    approvedAt: serverTimestamp()
+    managerNotes: notes,
+    updatedAt: new Date()
   });
 };
 
-export const rejectGoalSheet = async (sheetId: string) => {
+export const rejectGoalSheet = async (sheetId: string, notes: string = ''): Promise<void> => {
   const sheetRef = doc(db, "goalSheets", sheetId);
   await updateDoc(sheetRef, {
     status: "rejected",
-    rejectedAt: serverTimestamp()
+    managerNotes: notes,
+    updatedAt: new Date()
   });
 };

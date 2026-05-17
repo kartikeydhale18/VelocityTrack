@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: firebaseUser.email,
             name: firebaseUser.displayName,
             role: 'employee',
+            department: 'Unassigned',
             createdAt: serverTimestamp()
           });
           setRole('employee');

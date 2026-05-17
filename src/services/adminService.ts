@@ -1,4 +1,4 @@
-import { collection, query, where, getCountFromServer, getDocs } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 
 export const fetchQuarterlyCompliance = async () => {
@@ -62,4 +62,30 @@ export const exportPerformanceCSV = async (fiscalYear: string) => {
   setTimeout(() => {
     URL.revokeObjectURL(url);
   }, 1000);
+};
+
+export const fetchAllUsers = async (): Promise<any[]> => {
+  const usersRef = collection(db, 'users');
+  const snapshot = await getDocs(usersRef);
+  return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+};
+
+export const updateUser = async (uid: string, updates: any): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, updates);
+};
+
+export const fetchApprovedSheets = async (): Promise<any[]> => {
+  const q = query(collection(db, 'goalSheets'), where('status', '==', 'approved'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const revertSheetToDraft = async (sheetId: string): Promise<void> => {
+  const sheetRef = doc(db, 'goalSheets', sheetId);
+  await updateDoc(sheetRef, {
+    status: 'draft',
+    managerNotes: 'Reverted to draft by HR/Admin for corrections.',
+    updatedAt: new Date()
+  });
 };

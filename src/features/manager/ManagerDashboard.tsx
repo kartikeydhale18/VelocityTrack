@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { CheckCircle, Clock, AlertTriangle, UserCheck, XCircle } from 'lucide-react';
+import { Textarea } from '../../components/ui/Textarea';
+import { CheckCircle, Clock, AlertTriangle, UserCheck, XCircle, MessageSquare } from 'lucide-react';
 import { fetchPendingSheets, approveGoalSheet, rejectGoalSheet, type PendingSheet } from '../../services/managerService';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +11,7 @@ export default function ManagerDashboard() {
   const [pendingSheets, setPendingSheets] = useState<PendingSheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const loadPendingSheets = async () => {
     setLoading(true);
@@ -30,7 +32,7 @@ export default function ManagerDashboard() {
   const handleApprove = async (sheetId: string) => {
     setProcessingId(sheetId);
     try {
-      await approveGoalSheet(sheetId);
+      await approveGoalSheet(sheetId, notes[sheetId] || '');
       // Remove the approved sheet from the local list
       setPendingSheets(current => current.filter(s => s.id !== sheetId));
     } catch (error) {
@@ -44,7 +46,7 @@ export default function ManagerDashboard() {
   const handleReject = async (sheetId: string) => {
     setProcessingId(sheetId + "_reject");
     try {
-      await rejectGoalSheet(sheetId);
+      await rejectGoalSheet(sheetId, notes[sheetId] || '');
       // Remove the rejected sheet from the local list
       setPendingSheets(current => current.filter(s => s.id !== sheetId));
     } catch (error) {
@@ -102,6 +104,15 @@ export default function ManagerDashboard() {
                         {sheet.totalWeightage !== 100 && <AlertTriangle size={14} />}
                         {sheet.totalWeightage}% Total Weightage
                       </span>
+                    </div>
+
+                    <div className="mt-4">
+                      <Textarea 
+                        placeholder="Add feedback or notes (optional)..."
+                        value={notes[sheet.id] || ''}
+                        onChange={(e) => setNotes({...notes, [sheet.id]: e.target.value})}
+                        className="h-20 bg-slate-800/50"
+                      />
                     </div>
                   </div>
                   

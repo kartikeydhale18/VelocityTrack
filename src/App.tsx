@@ -3,9 +3,10 @@ import GoalDashboard from './features/goals/GoalDashboard';
 import CheckinDashboard from './features/checkins/CheckinDashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
+import SharedTasksDashboard from './features/shared/SharedTasksDashboard';
 import LoginScreen from './features/auth/LoginScreen';
 import type { Goal } from './types';
-import { Target, CalendarCheck, ShieldAlert, UserCheck, LogOut } from 'lucide-react';
+import { Target, CalendarCheck, ShieldAlert, UserCheck, LogOut, Briefcase } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { auth, db } from './config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -17,7 +18,7 @@ function AppContent() {
     const saved = localStorage.getItem('velocitytrack_draft_goals');
     return saved ? JSON.parse(saved) : [];
   });
-  const [activeTab, setActiveTab] = useState<'goals' | 'checkin' | 'manager' | 'admin'>('goals');
+  const [activeTab, setActiveTab] = useState<'goals' | 'checkin' | 'shared' | 'manager' | 'admin'>('goals');
 
   // Automatically save to localStorage whenever goals change
   useEffect(() => {
@@ -70,6 +71,15 @@ function AppContent() {
               >
                 <CalendarCheck size={16} />
                 Check-in
+              </button>
+              <button
+                onClick={() => setActiveTab('shared')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'shared' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <Briefcase size={16} />
+                Shared Tasks
               </button>
               {(role === 'manager' || role === 'admin') && (
                 <button
@@ -133,8 +143,9 @@ function AppContent() {
       <main className="p-8">
         {activeTab === 'goals' && <GoalDashboard goals={goals} setGoals={setGoals} />}
         {activeTab === 'checkin' && <CheckinDashboard />}
-        {activeTab === 'manager' && <ManagerDashboard />}
-        {activeTab === 'admin' && <AdminDashboard />}
+        {activeTab === 'shared' && <SharedTasksDashboard />}
+        {activeTab === 'manager' && (role === 'manager' || role === 'admin') && <ManagerDashboard />}
+        {activeTab === 'admin' && role === 'admin' && <AdminDashboard />}
       </main>
     </div>
   );

@@ -4,9 +4,10 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
-import { AlertCircle, CheckCircle2, Plus, Send, AlertTriangle, Target, Briefcase } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Plus, Send, AlertTriangle, Target, Briefcase, FileText, X } from 'lucide-react';
 import type { Goal } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { fetchEmployeeApprovedGoals } from '../../services/goalService';
 
 interface GoalDashboardProps {
   goals: Goal[];
@@ -37,6 +38,10 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
   const [unit, setUnit] = useState('Numeric');
   const [target, setTarget] = useState('');
   const [weightage, setWeightage] = useState('');
+
+  const [showApprovedModal, setShowApprovedModal] = useState(false);
+  const [approvedGoals, setApprovedGoals] = useState<Goal[]>([]);
+  const [loadingApproved, setLoadingApproved] = useState(false);
 
   const totalGoals = goals.length;
   const totalWeightage = goals.reduce((acc, g) => acc + g.weightage, 0);
@@ -95,16 +100,30 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
     }
   };
 
+  const handleOpenApproved = async () => {
+    setShowApprovedModal(true);
+    setLoadingApproved(true);
+    try {
+      const result = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
+      setApprovedGoals(result);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingApproved(false);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in duration-300 relative">
       
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-            Goal Drafting
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Target size={28} className="text-blue-400" />
+            FY26 Draft Goals
           </h1>
-          <p className="text-slate-400 mt-1">Define and manage your key performance indicators.</p>
+          <p className="text-slate-400 mt-1">Draft your quarterly objectives for manager approval.</p>
         </div>
         <div className="flex items-center gap-4">
           {submitSuccess && (
@@ -112,6 +131,9 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
               <CheckCircle2 size={16} /> Saved to Firebase!
             </span>
           )}
+          <Button variant="secondary" onClick={handleOpenApproved} className="gap-2 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10">
+            <FileText size={16} /> View Approved Goals
+          </Button>
           <Button 
             variant="primary" 
             size="lg"
@@ -125,6 +147,66 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
         </div>
       </div>
 
+      {/* Approved Goals Modal */}
+      {showApprovedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <Card className="w-full max-w-4xl max-h-[80vh] flex flex-col bg-slate-900 border-slate-700 shadow-2xl">
+            <CardHeader className="border-b border-slate-800 flex flex-row items-center justify-between">
+              <CardTitle className="text-emerald-400 flex items-center gap-2">
+                <CheckCircle2 size={20} /> My Approved Goals (FY26)
+              </CardTitle>
+              <button onClick={() => setShowApprovedModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </CardHeader>
+            <CardContent className="overflow-y-auto p-6 flex-1 space-y-6">
+              {loadingApproved ? (
+                <div className="text-center text-slate-500 py-12 animate-pulse">Loading approved goals...</div>
+              ) : approvedGoals.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl">
+                  <FileText size={48} className="mx-auto text-slate-600 mb-4" />
+                  <h3 className="text-lg font-bold text-slate-300">No Approved Goals Found</h3>
+                  <p className="text-slate-500 mt-2">You do not have an approved goal sheet for FY26 yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {approvedGoals.map((sheet: any) => (
+                    <div key={sheet.id} className="col-span-full mb-4">
+                      {sheet.managerNotes && (
+                        <div className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
+                          <strong className="text-amber-400 block mb-1">Manager Notes:</strong>
+                          {sheet.managerNotes}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {sheet.goals.map((goal: Goal) => (
+                          <div key={goal.id} className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">
+                                {goal.thrustArea}
+                              </span>
+                              <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                                {goal.weightage}% Weight
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
+                            <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
+                            <div className="text-xs text-slate-500 border-t border-emerald-500/10 pt-2">
+                              Target: <span className="text-emerald-400 font-bold">{goal.target} {goal.unit}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Main Draft Area */}
