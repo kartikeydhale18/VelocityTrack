@@ -6,6 +6,7 @@ export interface Goal {
   unit: string;
   target: number;
   weightage: number;
+  achievements?: Record<string, { actual: string | number, status: string, timestamp: any }>;
 }
 
 export interface SharedTask {

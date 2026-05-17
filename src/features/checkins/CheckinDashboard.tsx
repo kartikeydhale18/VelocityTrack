@@ -21,6 +21,14 @@ export default function CheckinDashboard() {
         const approvedData = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
         if (approvedData && approvedData.goals) {
           setGoals(approvedData.goals);
+          // Populate actuals from q1 if exists
+          const loadedActuals: Record<string, string | number> = {};
+          approvedData.goals.forEach(g => {
+            if (g.achievements && g.achievements['q1']) {
+              loadedActuals[g.id] = g.achievements['q1'].actual;
+            }
+          });
+          setActuals(loadedActuals);
         } else {
           setGoals([]);
         }
@@ -111,12 +119,6 @@ export default function CheckinDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-              <Unlock size={14} />
-              Window Open
-            </span>
-          </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             Quarterly Check-in
           </h1>

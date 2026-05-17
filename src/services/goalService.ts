@@ -27,7 +27,8 @@ export const fetchEmployeeApprovedGoals = async (employeeId: string, fiscalYear:
       description: data.description,
       unit: data.uom,
       target: data.target,
-      weightage: data.weightage
+      weightage: data.weightage,
+      achievements: data.achievements
     });
   });
   
