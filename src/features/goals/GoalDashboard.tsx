@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { AlertCircle, CheckCircle2, Plus, Send, AlertTriangle, Target, Briefcase, FileText, X, Clock } from 'lucide-react';
 import type { Goal } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { fetchEmployeeGoalSheet } from '../../services/goalService';
+import { fetchAllEmployeeGoalSheets } from '../../services/goalService';
 
 interface GoalDashboardProps {
   goals: Goal[];
@@ -40,7 +40,7 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
   const [weightage, setWeightage] = useState('');
 
   const [showSubmittedModal, setShowSubmittedModal] = useState(false);
-  const [submittedData, setSubmittedData] = useState<{ status: string, managerNotes?: string, goals: Goal[] } | null>(null);
+  const [submittedData, setSubmittedData] = useState<any[]>([]);
   const [loadingSubmitted, setLoadingSubmitted] = useState(false);
 
   const totalGoals = goals.length;
@@ -104,8 +104,8 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
     setShowSubmittedModal(true);
     setLoadingSubmitted(true);
     try {
-      const result = await fetchEmployeeGoalSheet(user!.uid, 'FY26');
-      setSubmittedData(result);
+      const result = await fetchAllEmployeeGoalSheets(user!.uid, 'FY26');
+      setSubmittedData(result || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -162,55 +162,69 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
             <CardContent className="overflow-y-auto p-6 flex-1 space-y-6">
               {loadingSubmitted ? (
                 <div className="text-center text-slate-500 py-12 animate-pulse">Loading submitted goals...</div>
-              ) : !submittedData || submittedData.goals.length === 0 ? (
+              ) : submittedData.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl">
                   <FileText size={48} className="mx-auto text-slate-600 mb-4" />
                   <h3 className="text-lg font-bold text-slate-300">No Submissions Found</h3>
                   <p className="text-slate-500 mt-2">You have not submitted a goal sheet for FY26 yet.</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  
-                  {/* Status Banner */}
-                  <div className={`p-4 rounded-xl flex items-start gap-3 border ${
-                    submittedData.status === 'approved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
-                    submittedData.status === 'rejected' ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' :
-                    'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                  }`}>
-                    {submittedData.status === 'approved' ? <CheckCircle2 size={24} className="text-emerald-400 mt-0.5" /> :
-                     submittedData.status === 'rejected' ? <X size={24} className="text-rose-400 mt-0.5" /> :
-                     <Clock size={24} className="text-amber-400 mt-0.5" />}
-                    <div>
-                      <h4 className="font-bold uppercase tracking-wider mb-1">
-                        Status: {submittedData.status.replace('_', ' ')}
-                      </h4>
-                      {submittedData.managerNotes && (
-                        <p className="text-sm opacity-90 leading-relaxed italic">
-                          "{submittedData.managerNotes}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                <div className="space-y-12">
+                  {submittedData.map((sheet, index) => (
+                    <div key={sheet.id} className="space-y-4">
+                      
+                      <div className="flex items-center gap-4">
+                        <h3 className="text-lg font-bold text-slate-300">
+                          {index === 0 ? 'Latest Submission' : `Submission ${submittedData.length - index}`}
+                        </h3>
+                        <div className="h-px flex-1 bg-slate-800"></div>
+                        <span className="text-xs text-slate-500">{new Date(sheet.submittedAt?.toDate()).toLocaleString()}</span>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {submittedData.goals.map((goal: Goal) => (
-                      <div key={goal.id} className="p-4 rounded-xl border border-slate-700/50 bg-slate-800/40">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
-                            {goal.thrustArea}
-                          </span>
-                          <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded">
-                            {goal.weightage}% Weight
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
-                        <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
-                        <div className="text-xs text-slate-500 border-t border-slate-700/50 pt-2">
-                          Target: <span className="text-blue-400 font-bold">{goal.target} {goal.unit}</span>
+                      {/* Status Banner */}
+                      <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+                        sheet.status === 'approved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
+                        sheet.status === 'rejected' ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' :
+                        sheet.status === 'superseded' ? 'bg-slate-800/50 border-slate-700 text-slate-400' :
+                        'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                      }`}>
+                        {sheet.status === 'approved' ? <CheckCircle2 size={24} className="text-emerald-400 mt-0.5" /> :
+                         sheet.status === 'rejected' ? <X size={24} className="text-rose-400 mt-0.5" /> :
+                         sheet.status === 'superseded' ? <FileText size={24} className="text-slate-500 mt-0.5" /> :
+                         <Clock size={24} className="text-amber-400 mt-0.5" />}
+                        <div>
+                          <h4 className="font-bold uppercase tracking-wider mb-1">
+                            Status: {sheet.status.replace('_', ' ')}
+                          </h4>
+                          {sheet.managerNotes && (
+                            <p className="text-sm opacity-90 leading-relaxed italic">
+                              "{sheet.managerNotes}"
+                            </p>
+                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {sheet.goals.map((goal: Goal) => (
+                          <div key={goal.id} className="p-4 rounded-xl border border-slate-700/50 bg-slate-800/40">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                                {goal.thrustArea}
+                              </span>
+                              <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded">
+                                {goal.weightage}% Weight
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
+                            <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
+                            <div className="text-xs text-slate-500 border-t border-slate-700/50 pt-2">
+                              Target: <span className="text-blue-400 font-bold">{goal.target} {goal.unit}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

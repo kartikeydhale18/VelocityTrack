@@ -4,7 +4,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Lock, Unlock, Calendar, TrendingUp, CheckCircle, BarChart3, Loader2 } from 'lucide-react';
 import type { Goal } from '../../types';
-import { fetchEmployeeGoalSheet } from '../../services/goalService';
+import { fetchActiveApprovedSheet } from '../../services/goalService';
 import { useAuth } from '../../context/AuthContext';
 
 export default function CheckinDashboard() {
@@ -14,13 +14,16 @@ export default function CheckinDashboard() {
   const [actuals, setActuals] = useState<Record<string, string | number>>({});
   const [isWindowOpen, setIsWindowOpen] = useState(false);
 
+  const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
+
   useEffect(() => {
     const loadGoals = async () => {
       setLoading(true);
       try {
-        const approvedData = await fetchEmployeeGoalSheet(user!.uid, 'FY26');
-        if (approvedData && approvedData.status === 'approved' && approvedData.goals) {
+        const approvedData = await fetchActiveApprovedSheet(user!.uid, 'FY26');
+        if (approvedData && approvedData.goals) {
           setGoals(approvedData.goals);
+          setActiveSheetId(approvedData.id);
           // Populate actuals from q1 if exists
           const loadedActuals: Record<string, string | number> = {};
           approvedData.goals.forEach(g => {
@@ -240,7 +243,9 @@ export default function CheckinDashboard() {
                     try {
                       const { submitQuarterlyCheckin } = await import('../../services/goalService');
                       const quarter = validMonths.includes(6) ? 'q1' : 'q2'; // Mock logic for quarter
-                      await submitQuarterlyCheckin(user!.uid, 'FY26', quarter, actuals);
+                      if (activeSheetId) {
+                        await submitQuarterlyCheckin(activeSheetId, quarter, actuals);
+                      }
                       if (btn) {
                         btn.innerText = 'Success!';
                         btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');

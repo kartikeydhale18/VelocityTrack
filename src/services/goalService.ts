@@ -1,46 +1,82 @@
-import { writeBatch, doc, collection, serverTimestamp, getDoc, getDocs } from "firebase/firestore";
+import { writeBatch, doc, collection, serverTimestamp, getDocs, query, where, orderBy, getDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 import type { Goal } from "../types";
 
-export const fetchEmployeeGoalSheet = async (employeeId: string, fiscalYear: string): Promise<{ status: string, managerNotes?: string, goals: Goal[] } | null> => {
-  const sheetId = `${employeeId}_${fiscalYear}`;
-  const sheetRef = doc(db, "goalSheets", sheetId);
-  const sheetSnap = await getDoc(sheetRef);
+export const fetchAllEmployeeGoalSheets = async (employeeId: string, fiscalYear: string) => {
+  const q = query(
+    collection(db, "goalSheets"),
+    where("employeeId", "==" , employeeId),
+    where("fiscalYear", "==", fiscalYear),
+    orderBy("submittedAt", "desc")
+  );
   
-  // If the sheet doesn't exist, return null
-  if (!sheetSnap.exists()) {
-    return null;
+  const snap = await getDocs(q);
+  const sheets = [];
+  
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data();
+    
+    // Fetch goals subcollection
+    const goalsRef = collection(db, `goalSheets/${docSnap.id}/goals`);
+    const goalsSnap = await getDocs(goalsRef);
+    const goalsData = goalsSnap.docs.map(g => ({ id: g.id, ...g.data() }));
+
+    sheets.push({
+      id: docSnap.id,
+      status: data.status,
+      managerNotes: data.managerNotes || '',
+      submittedAt: data.submittedAt,
+      goals: goalsData
+    });
   }
   
-  const status = sheetSnap.data().status;
-  const managerNotes = sheetSnap.data().managerNotes || '';
+  return sheets;
+};
+
+export const fetchActiveApprovedSheet = async (employeeId: string, fiscalYear: string) => {
+  const q = query(
+    collection(db, "goalSheets"),
+    where("employeeId", "==" , employeeId),
+    where("fiscalYear", "==", fiscalYear),
+    where("status", "==", "approved")
+  );
   
-  const goalsRef = collection(db, `goalSheets/${sheetId}/goals`);
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  
+  // Assuming there's only ever one approved sheet, pick the first
+  const docSnap = snap.docs[0];
+  const data = docSnap.data();
+  
+  const goalsRef = collection(db, `goalSheets/${docSnap.id}/goals`);
   const goalsSnap = await getDocs(goalsRef);
+  const goalsData = goalsSnap.docs.map(g => ({ id: g.id, ...g.data() }));
   
-  const approvedGoals: Goal[] = [];
-  goalsSnap.forEach((docSnap) => {
-    const data = docSnap.data();
-    approvedGoals.push({
-      id: docSnap.id, // Real Firestore ID!
-      thrustArea: data.thrustArea,
-      title: data.title,
-      description: data.description,
-      unit: data.uom,
-      target: data.target,
-      weightage: data.weightage,
-      achievements: data.achievements
-    });
-  });
-  
-  return { status, managerNotes, goals: approvedGoals };
+  return {
+    id: docSnap.id,
+    status: data.status,
+    managerNotes: data.managerNotes || '',
+    goals: goalsData
+  };
 };
 
 export const submitGoalSheet = async (employeeId: string, fiscalYear: string, goals: Goal[]) => {
   const batch = writeBatch(db);
-  const sheetId = `${employeeId}_${fiscalYear}`;
+  const sheetId = `${employeeId}_${fiscalYear}_${Date.now()}`;
   
   const totalWeightage = goals.reduce((sum, g) => sum + g.weightage, 0);
+
+  // 0. Archive any existing pending sheets so they don't pile up in the manager queue
+  const existingPendingQ = query(
+    collection(db, "goalSheets"),
+    where("employeeId", "==", employeeId),
+    where("fiscalYear", "==", fiscalYear),
+    where("status", "==", "pending_approval")
+  );
+  const pendingSnap = await getDocs(existingPendingQ);
+  pendingSnap.forEach(docSnap => {
+    batch.update(docSnap.ref, { status: 'superseded' });
+  });
 
   // 1. Create the parent goal sheet document
   const sheetRef = doc(db, "goalSheets", sheetId);
@@ -76,9 +112,8 @@ export const submitGoalSheet = async (employeeId: string, fiscalYear: string, go
   await batch.commit();
 };
 
-export const submitQuarterlyCheckin = async (employeeId: string, fiscalYear: string, quarter: string, actuals: Record<string, string | number>) => {
+export const submitQuarterlyCheckin = async (sheetId: string, quarter: string, actuals: Record<string, string | number>) => {
   const batch = writeBatch(db);
-  const sheetId = `${employeeId}_${fiscalYear}`;
 
   // In a real scenario, we would query the existing goals from the subcollection.
   // Since we only have the local state Goal array (which has our locally generated IDs),
