@@ -13,7 +13,7 @@ export const fetchQuarterlyCompliance = async () => {
   const completedQuery = query(
     goalSheetsRef, 
     where("fiscalYear", "==", "FY26"),
-    where("status", "==", "pending_approval") // In MVP, anything submitted is pending_approval
+    where("status", "in", ["pending_approval", "approved"]) // Count both pending and approved as 'submitted'
   );
   const completedSnapshot = await getCountFromServer(completedQuery);
   const totalCompleted = completedSnapshot.data().count;
