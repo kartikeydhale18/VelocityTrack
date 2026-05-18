@@ -4,7 +4,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Lock, Unlock, Calendar, TrendingUp, CheckCircle, BarChart3, Loader2 } from 'lucide-react';
 import type { Goal } from '../../types';
-import { fetchEmployeeApprovedGoals } from '../../services/goalService';
+import { fetchEmployeeGoalSheet } from '../../services/goalService';
 import { useAuth } from '../../context/AuthContext';
 
 export default function CheckinDashboard() {
@@ -18,8 +18,8 @@ export default function CheckinDashboard() {
     const loadGoals = async () => {
       setLoading(true);
       try {
-        const approvedData = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
-        if (approvedData && approvedData.goals) {
+        const approvedData = await fetchEmployeeGoalSheet(user!.uid, 'FY26');
+        if (approvedData && approvedData.status === 'approved' && approvedData.goals) {
           setGoals(approvedData.goals);
           // Populate actuals from q1 if exists
           const loadedActuals: Record<string, string | number> = {};
