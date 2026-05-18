@@ -2,16 +2,17 @@ import { writeBatch, doc, collection, serverTimestamp, getDoc, getDocs } from "f
 import { db } from "../config/firebase";
 import type { Goal } from "../types";
 
-export const fetchEmployeeApprovedGoals = async (employeeId: string, fiscalYear: string): Promise<{ managerNotes?: string, goals: Goal[] } | null> => {
+export const fetchEmployeeGoalSheet = async (employeeId: string, fiscalYear: string): Promise<{ status: string, managerNotes?: string, goals: Goal[] } | null> => {
   const sheetId = `${employeeId}_${fiscalYear}`;
   const sheetRef = doc(db, "goalSheets", sheetId);
   const sheetSnap = await getDoc(sheetRef);
   
-  // If the sheet doesn't exist or isn't approved by a manager, return null
-  if (!sheetSnap.exists() || sheetSnap.data().status !== 'approved') {
+  // If the sheet doesn't exist, return null
+  if (!sheetSnap.exists()) {
     return null;
   }
   
+  const status = sheetSnap.data().status;
   const managerNotes = sheetSnap.data().managerNotes || '';
   
   const goalsRef = collection(db, `goalSheets/${sheetId}/goals`);
@@ -32,7 +33,7 @@ export const fetchEmployeeApprovedGoals = async (employeeId: string, fiscalYear:
     });
   });
   
-  return { managerNotes, goals: approvedGoals };
+  return { status, managerNotes, goals: approvedGoals };
 };
 
 export const submitGoalSheet = async (employeeId: string, fiscalYear: string, goals: Goal[]) => {

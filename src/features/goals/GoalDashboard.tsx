@@ -4,10 +4,10 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
-import { AlertCircle, CheckCircle2, Plus, Send, AlertTriangle, Target, Briefcase, FileText, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Plus, Send, AlertTriangle, Target, Briefcase, FileText, X, Clock } from 'lucide-react';
 import type { Goal } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { fetchEmployeeApprovedGoals } from '../../services/goalService';
+import { fetchEmployeeGoalSheet } from '../../services/goalService';
 
 interface GoalDashboardProps {
   goals: Goal[];
@@ -39,9 +39,9 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
   const [target, setTarget] = useState('');
   const [weightage, setWeightage] = useState('');
 
-  const [showApprovedModal, setShowApprovedModal] = useState(false);
-  const [approvedData, setApprovedData] = useState<{ managerNotes?: string, goals: Goal[] } | null>(null);
-  const [loadingApproved, setLoadingApproved] = useState(false);
+  const [showSubmittedModal, setShowSubmittedModal] = useState(false);
+  const [submittedData, setSubmittedData] = useState<{ status: string, managerNotes?: string, goals: Goal[] } | null>(null);
+  const [loadingSubmitted, setLoadingSubmitted] = useState(false);
 
   const totalGoals = goals.length;
   const totalWeightage = goals.reduce((acc, g) => acc + g.weightage, 0);
@@ -100,16 +100,16 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
     }
   };
 
-  const handleOpenApproved = async () => {
-    setShowApprovedModal(true);
-    setLoadingApproved(true);
+  const handleOpenSubmitted = async () => {
+    setShowSubmittedModal(true);
+    setLoadingSubmitted(true);
     try {
-      const result = await fetchEmployeeApprovedGoals(user!.uid, 'FY26');
-      setApprovedData(result);
+      const result = await fetchEmployeeGoalSheet(user!.uid, 'FY26');
+      setSubmittedData(result);
     } catch (e) {
       console.error(e);
     } finally {
-      setLoadingApproved(false);
+      setLoadingSubmitted(false);
     }
   };
 
@@ -131,8 +131,8 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
               <CheckCircle2 size={16} /> Saved to Firebase!
             </span>
           )}
-          <Button variant="secondary" onClick={handleOpenApproved} className="gap-2 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10">
-            <FileText size={16} /> View Approved Goals
+          <Button variant="secondary" onClick={handleOpenSubmitted} className="gap-2 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10">
+            <FileText size={16} /> View Submitted Goals
           </Button>
           <Button 
             variant="primary" 
@@ -147,50 +147,66 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
         </div>
       </div>
 
-      {/* Approved Goals Modal */}
-      {showApprovedModal && (
+      {/* Submitted Goals Modal */}
+      {showSubmittedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
           <Card className="w-full max-w-4xl max-h-[80vh] flex flex-col bg-slate-900 border-slate-700 shadow-2xl">
             <CardHeader className="border-b border-slate-800 flex flex-row items-center justify-between">
-              <CardTitle className="text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 size={20} /> My Approved Goals (FY26)
+              <CardTitle className="text-blue-400 flex items-center gap-2">
+                <FileText size={20} /> My Submitted Goals (FY26)
               </CardTitle>
-              <button onClick={() => setShowApprovedModal(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button onClick={() => setShowSubmittedModal(false)} className="text-slate-400 hover:text-white transition-colors">
                 <X size={24} />
               </button>
             </CardHeader>
             <CardContent className="overflow-y-auto p-6 flex-1 space-y-6">
-              {loadingApproved ? (
-                <div className="text-center text-slate-500 py-12 animate-pulse">Loading approved goals...</div>
-              ) : !approvedData || approvedData.goals.length === 0 ? (
+              {loadingSubmitted ? (
+                <div className="text-center text-slate-500 py-12 animate-pulse">Loading submitted goals...</div>
+              ) : !submittedData || submittedData.goals.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl">
                   <FileText size={48} className="mx-auto text-slate-600 mb-4" />
-                  <h3 className="text-lg font-bold text-slate-300">No Approved Goals Found</h3>
-                  <p className="text-slate-500 mt-2">You do not have an approved goal sheet for FY26 yet.</p>
+                  <h3 className="text-lg font-bold text-slate-300">No Submissions Found</h3>
+                  <p className="text-slate-500 mt-2">You have not submitted a goal sheet for FY26 yet.</p>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {approvedData.managerNotes && (
-                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
-                      <strong className="text-amber-400 block mb-1">Manager Notes:</strong>
-                      {approvedData.managerNotes}
+                  
+                  {/* Status Banner */}
+                  <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+                    submittedData.status === 'approved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
+                    submittedData.status === 'rejected' ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' :
+                    'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                  }`}>
+                    {submittedData.status === 'approved' ? <CheckCircle2 size={24} className="text-emerald-400 mt-0.5" /> :
+                     submittedData.status === 'rejected' ? <X size={24} className="text-rose-400 mt-0.5" /> :
+                     <Clock size={24} className="text-amber-400 mt-0.5" />}
+                    <div>
+                      <h4 className="font-bold uppercase tracking-wider mb-1">
+                        Status: {submittedData.status.replace('_', ' ')}
+                      </h4>
+                      {submittedData.managerNotes && (
+                        <p className="text-sm opacity-90 leading-relaxed italic">
+                          "{submittedData.managerNotes}"
+                        </p>
+                      )}
                     </div>
-                  )}
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {approvedData.goals.map((goal: Goal) => (
-                      <div key={goal.id} className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                    {submittedData.goals.map((goal: Goal) => (
+                      <div key={goal.id} className="p-4 rounded-xl border border-slate-700/50 bg-slate-800/40">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded">
+                          <span className="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
                             {goal.thrustArea}
                           </span>
-                          <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                          <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded">
                             {goal.weightage}% Weight
                           </span>
                         </div>
                         <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
                         <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
-                        <div className="text-xs text-slate-500 border-t border-emerald-500/10 pt-2">
-                          Target: <span className="text-emerald-400 font-bold">{goal.target} {goal.unit}</span>
+                        <div className="text-xs text-slate-500 border-t border-slate-700/50 pt-2">
+                          Target: <span className="text-blue-400 font-bold">{goal.target} {goal.unit}</span>
                         </div>
                       </div>
                     ))}
