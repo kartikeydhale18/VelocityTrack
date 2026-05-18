@@ -24,5 +24,8 @@ export interface UserProfile {
   name: string;
   role: 'employee' | 'manager' | 'admin';
   department: string;
+  designation?: string;
+  phoneNumber?: string;
+  salary?: string | number;
   createdAt: any;
 }

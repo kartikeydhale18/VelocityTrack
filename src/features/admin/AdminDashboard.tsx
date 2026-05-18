@@ -174,6 +174,8 @@ export default function AdminDashboard() {
                   <th className="p-4 rounded-tl-xl font-medium">Employee Name</th>
                   <th className="p-4 font-medium">Email</th>
                   <th className="p-4 font-medium">Department</th>
+                  <th className="p-4 font-medium">Designation</th>
+                  <th className="p-4 font-medium">Phone / Salary</th>
                   <th className="p-4 font-medium">Role</th>
                   <th className="p-4 rounded-tr-xl font-medium text-right">Actions</th>
                 </tr>
@@ -190,9 +192,48 @@ export default function AdminDashboard() {
                           value={editForm.department || ''} 
                           onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
                           className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-32"
+                          placeholder="Dept"
                         />
                       ) : (
                         <span className="px-2 py-1 rounded-full bg-slate-800 text-xs">{user.department || 'Unassigned'}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingUser === user.uid ? (
+                        <input 
+                          type="text" 
+                          value={editForm.designation || ''} 
+                          onChange={(e) => setEditForm({ ...editForm, designation: e.target.value })}
+                          className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-32"
+                          placeholder="Designation"
+                        />
+                      ) : (
+                        <span className="text-slate-300">{user.designation || '-'}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {editingUser === user.uid ? (
+                        <div className="flex flex-col gap-1">
+                          <input 
+                            type="text" 
+                            value={editForm.phoneNumber || ''} 
+                            onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                            className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-32"
+                            placeholder="Phone"
+                          />
+                          <input 
+                            type="text" 
+                            value={editForm.salary || ''} 
+                            onChange={(e) => setEditForm({ ...editForm, salary: e.target.value })}
+                            className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-blue-500 w-32"
+                            placeholder="Salary"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col text-xs text-slate-400">
+                          <span>{user.phoneNumber || '-'}</span>
+                          <span>{user.salary ? `$${user.salary}` : '-'}</span>
+                        </div>
                       )}
                     </td>
                     <td className="p-4">
@@ -224,7 +265,7 @@ export default function AdminDashboard() {
                         <Button 
                           size="sm" 
                           variant="secondary" 
-                          onClick={() => { setEditingUser(user.uid); setEditForm({ role: user.role, department: user.department || '' }); }} 
+                          onClick={() => { setEditingUser(user.uid); setEditForm({ role: user.role, department: user.department || '', designation: user.designation, phoneNumber: user.phoneNumber, salary: user.salary }); }} 
                           className="gap-2 text-blue-400 hover:text-blue-300"
                         >
                           <Edit2 size={14} /> Edit
@@ -235,7 +276,7 @@ export default function AdminDashboard() {
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">No users found.</td>
+                    <td colSpan={7} className="p-8 text-center text-slate-500">No users found.</td>
                   </tr>
                 )}
               </tbody>

@@ -5,6 +5,7 @@ import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
 import SharedTasksDashboard from './features/shared/SharedTasksDashboard';
 import LoginScreen from './features/auth/LoginScreen';
+import OnboardingModal from './features/auth/OnboardingModal';
 import type { Goal } from './types';
 import { Target, CalendarCheck, ShieldAlert, UserCheck, LogOut, Briefcase } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -12,7 +13,7 @@ import { auth, db } from './config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 function AppContent() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, updateUserProfile } = useAuth();
   // Initialize state from localStorage if it exists
   const [goals, setGoals] = useState<Goal[]>(() => {
     const saved = localStorage.getItem('velocitytrack_draft_goals');
@@ -38,6 +39,10 @@ function AppContent() {
 
   if (!user) {
     return <LoginScreen />;
+  }
+
+  if (!user.department) {
+    return <OnboardingModal user={user as any} onComplete={updateUserProfile} />;
   }
 
   return (
