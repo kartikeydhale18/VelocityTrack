@@ -9,6 +9,7 @@ import OnboardingModal from './features/auth/OnboardingModal';
 import type { Goal } from './types';
 import { Target, CalendarCheck, ShieldAlert, UserCheck, LogOut, Briefcase } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CycleProvider } from './context/CycleContext';
 import { auth, db } from './config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
@@ -158,8 +159,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <CycleProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </CycleProvider>
   );
 }

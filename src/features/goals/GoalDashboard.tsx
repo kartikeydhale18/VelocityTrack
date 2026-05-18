@@ -4,10 +4,11 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
-import { AlertCircle, CheckCircle2, Plus, Send, AlertTriangle, Target, Briefcase, FileText, X, Clock } from 'lucide-react';
+import { Lock, Save, Plus, Trash2, Send, FileText, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle, Target, Briefcase, X, Clock } from 'lucide-react';
 import type { Goal } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { fetchAllEmployeeGoalSheets } from '../../services/goalService';
+import { useCycle } from '../../context/CycleContext';
+import { submitGoalSheet, fetchAllEmployeeGoalSheets } from '../../services/goalService';
 
 interface GoalDashboardProps {
   goals: Goal[];
@@ -31,6 +32,7 @@ const UNITS = [
 
 export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
   const { user } = useAuth();
+  const { activeCycle } = useCycle();
   // Form State
   const [thrustArea, setThrustArea] = useState('');
   const [title, setTitle] = useState('');
@@ -85,10 +87,7 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
     if (!isAllValid) return;
     setIsSubmitting(true);
     try {
-      // Dynamic import to avoid circular dependencies or load times if needed, 
-      // but we can just import it at the top normally. Wait, I will just require it here for speed.
-      const { submitGoalSheet } = await import('../../services/goalService');
-      await submitGoalSheet(user!.uid, 'FY26', goals);
+      await submitGoalSheet(user!.uid, activeCycle.fiscalYear, goals);
       setSubmitSuccess(true);
       setTimeout(() => setSubmitSuccess(false), 3000);
       setGoals([]); // Clear draft after submit
@@ -104,7 +103,7 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
     setShowSubmittedModal(true);
     setLoadingSubmitted(true);
     try {
-      const result = await fetchAllEmployeeGoalSheets(user!.uid, 'FY26');
+      const result = await fetchAllEmployeeGoalSheets(user!.uid, activeCycle.fiscalYear);
       setSubmittedData(result || []);
     } catch (e) {
       console.error(e);
@@ -121,7 +120,7 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent flex items-center gap-3">
             <Target size={28} className="text-blue-400" />
-            FY26 Draft Goals
+            {activeCycle.fiscalYear} Draft Goals
           </h1>
           <p className="text-slate-400 mt-1">Draft your quarterly objectives for manager approval.</p>
         </div>
@@ -137,12 +136,12 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
           <Button 
             variant="primary" 
             size="lg"
-            disabled={!isAllValid || isSubmitting}
-            className="gap-2"
+            disabled={!isAllValid || isSubmitting || !activeCycle.isGoalSettingOpen}
+            className={`gap-2 ${!activeCycle.isGoalSettingOpen ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleSubmitToManager}
           >
-            <Send size={18} />
-            {isSubmitting ? 'Submitting...' : 'Submit to Manager'}
+            {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : <Send size={18} />}
+            {!activeCycle.isGoalSettingOpen ? 'Goal Setting Closed' : isSubmitting ? 'Submitting...' : 'Submit to Manager'}
           </Button>
         </div>
       </div>
@@ -150,10 +149,10 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
       {/* Submitted Goals Modal */}
       {showSubmittedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <Card className="w-full max-w-4xl max-h-[80vh] flex flex-col bg-slate-900 border-slate-700 shadow-2xl">
+          <Card className="w-full max-w-4xl max-h-[80vh] flex flex-col bg-slate-900 border-blue-500/20 shadow-lg shadow-blue-500/5">
             <CardHeader className="border-b border-slate-800 flex flex-row items-center justify-between">
               <CardTitle className="text-blue-400 flex items-center gap-2">
-                <FileText size={20} /> My Submitted Goals (FY26)
+                <FileText size={20} /> My Submitted Goals ({activeCycle.fiscalYear})
               </CardTitle>
               <button onClick={() => setShowSubmittedModal(false)} className="text-slate-400 hover:text-white transition-colors">
                 <X size={24} />
@@ -163,10 +162,10 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
               {loadingSubmitted ? (
                 <div className="text-center text-slate-500 py-12 animate-pulse">Loading submitted goals...</div>
               ) : submittedData.length === 0 ? (
-                <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl">
+                <div className="text-center py-12 border border-dashed border-slate-700 rounded-xl bg-slate-800/30">
                   <FileText size={48} className="mx-auto text-slate-600 mb-4" />
                   <h3 className="text-lg font-bold text-slate-300">No Submissions Found</h3>
-                  <p className="text-slate-500 mt-2">You have not submitted a goal sheet for FY26 yet.</p>
+                  <p className="text-slate-500 mt-2">You have not submitted a goal sheet for {activeCycle.fiscalYear} yet.</p>
                 </div>
               ) : (
                 <div className="space-y-12">
@@ -311,8 +310,8 @@ export default function GoalDashboard({ goals, setGoals }: GoalDashboardProps) {
           {/* Goals List */}
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-              <Briefcase size={20} className="text-emerald-400" />
-              Drafted Goals
+              <Target className="text-blue-500" />
+              {activeCycle.fiscalYear} Draft Goals
             </h2>
             
             {goals.length === 0 ? (

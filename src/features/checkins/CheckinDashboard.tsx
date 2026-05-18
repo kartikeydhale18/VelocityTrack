@@ -2,17 +2,19 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Lock, Unlock, Calendar, TrendingUp, CheckCircle, BarChart3, Loader2 } from 'lucide-react';
-import type { Goal } from '../../types';
 import { fetchActiveApprovedSheet } from '../../services/goalService';
 import { fetchAcceptedSharedTasks, updateAcceptedTaskStatus } from '../../services/sharedTaskService';
 import { useAuth } from '../../context/AuthContext';
+import { useCycle } from '../../context/CycleContext';
+import { Lock, Calendar, TrendingUp, BarChart3, CheckCircle } from 'lucide-react';
 
 export default function CheckinDashboard() {
   const { user } = useAuth();
+  const { activeCycle } = useCycle();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [actuals, setActuals] = useState<Record<string, string | number>>({});
+  const [selectedQuarter, setSelectedQuarter] = useState(activeCycle.activeQuarter);
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [acceptedSharedTasks, setAcceptedSharedTasks] = useState<any[]>([]);
 
@@ -23,7 +25,7 @@ export default function CheckinDashboard() {
       setLoading(true);
       try {
         const [approvedData, sharedTasks] = await Promise.all([
-          fetchActiveApprovedSheet(user!.uid, 'FY26'),
+          fetchActiveApprovedSheet(user!.uid, activeCycle.fiscalYear),
           fetchAcceptedSharedTasks(user!.uid)
         ]);
         
@@ -32,11 +34,11 @@ export default function CheckinDashboard() {
         if (approvedData && approvedData.goals) {
           setGoals(approvedData.goals);
           setActiveSheetId(approvedData.id);
-          // Populate actuals from q1 if exists
+          // Populate actuals from active quarter if exists
           const loadedActuals: Record<string, string | number> = {};
           approvedData.goals.forEach(g => {
-            if (g.achievements && g.achievements['q1']) {
-              loadedActuals[g.id] = g.achievements['q1'].actual;
+            if (g.achievements && g.achievements[selectedQuarter]) {
+              loadedActuals[g.id] = g.achievements[selectedQuarter].actual;
             }
           });
           setActuals(loadedActuals);
@@ -50,16 +52,11 @@ export default function CheckinDashboard() {
       }
     };
     loadGoals();
-  }, []);
-
-  // Q1: July (6), Q2: October (9), Q3: January (0), Q4: March (2)/April (3)
-  // Added May (4) temporarily so the Check-in tab works during the hackathon demo today!
-  const validMonths = [0, 2, 3, 4, 6, 9];
+  }, [activeCycle.fiscalYear, selectedQuarter]);
 
   useEffect(() => {
-    const currentMonth = new Date().getMonth();
-    setIsWindowOpen(validMonths.includes(currentMonth));
-  }, []);
+    setIsWindowOpen(activeCycle.isCheckinOpen);
+  }, [activeCycle.isCheckinOpen]);
 
   const handleActualChange = (goalId: string, val: string) => {
     setActuals((prev) => ({ ...prev, [goalId]: val }));
@@ -73,8 +70,6 @@ export default function CheckinDashboard() {
     
     switch (goal.unit) {
       case 'Timeline':
-        // For timeline, actual is a date. If actual date <= target date, 100%, else 0% (simplified)
-        // In real world we might measure days late. Here we just do a simple check.
         if (new Date(actualVal).getTime() <= new Date(goal.target).getTime()) {
           progress = 100;
         } else {
@@ -82,7 +77,6 @@ export default function CheckinDashboard() {
         }
         break;
       case 'Zero-based':
-        // Lower is better. If actual <= target, 100%. Else it decreases.
         if (actual <= goal.target) progress = 100;
         else {
           progress = Math.max(0, 100 - (((actual - goal.target) / goal.target) * 100));
@@ -91,12 +85,11 @@ export default function CheckinDashboard() {
       case 'Numeric':
       case '%':
       default:
-        // Higher is better.
         progress = (actual / goal.target) * 100;
         break;
     }
     
-    return Math.min(progress, 120); // Cap at 120%
+    return Math.min(progress, 120);
   };
 
   const computeTotalScore = () => {
@@ -115,7 +108,7 @@ export default function CheckinDashboard() {
           <Lock className="w-20 h-20 mx-auto text-slate-600 mb-6" />
           <h2 className="text-3xl font-bold text-slate-200 mb-4">Check-ins are Closed</h2>
           <p className="text-slate-400 max-w-lg mx-auto mb-8">
-            The Quarterly Check-in window is currently locked. Check-ins are only permitted during July, October, January, March, and April.
+            The Quarterly Check-in window is currently locked for {activeCycle.fiscalYear}.
           </p>
         </Card>
       </div>
@@ -124,14 +117,38 @@ export default function CheckinDashboard() {
 
   const totalScore = computeTotalScore();
 
+  const handleCheckin = async () => {
+    if (!activeSheetId) return;
+    try {
+      const { submitQuarterlyCheckin } = await import('../../services/goalService');
+      await submitQuarterlyCheckin(activeSheetId, selectedQuarter, actuals);
+      
+      const updatedGoals = goals.map(g => ({
+        ...g,
+        achievements: {
+          ...g.achievements,
+          [selectedQuarter]: {
+            actual: actuals[g.id],
+            status: "Logged",
+            timestamp: new Date()
+          }
+        }
+      }));
+      setGoals(updatedGoals);
+      alert("Check-in submitted successfully!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to submit check-in");
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in duration-300">
       
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Quarterly Check-in
+            Quarterly Check-in ({selectedQuarter.toUpperCase()})
           </h1>
         </div>
         <div className="text-right bg-slate-900/50 p-4 rounded-xl border border-slate-700">
@@ -144,7 +161,6 @@ export default function CheckinDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Main Check-in Area */}
         <div className="lg:col-span-2 space-y-6">
           {goals.length === 0 ? (
             <Card className="p-12 text-center border-dashed">
@@ -217,7 +233,6 @@ export default function CheckinDashboard() {
           )}
         </div>
 
-        {/* Sidebar Summary */}
         <div className="space-y-6">
           <Card className="sticky top-8 bg-slate-900/80">
             <CardHeader className="pb-4">
@@ -243,32 +258,10 @@ export default function CheckinDashboard() {
 
               <div className="pt-4 border-t border-slate-800">
                 <Button 
-                  className="w-full gap-2" 
+                  className="w-full gap-2 font-bold" 
                   variant="primary"
-                  onClick={async () => {
-                    const btn = document.getElementById('checkin-btn');
-                    if (btn) btn.innerText = 'Submitting...';
-                    try {
-                      const { submitQuarterlyCheckin } = await import('../../services/goalService');
-                      const quarter = validMonths.includes(6) ? 'q1' : 'q2'; // Mock logic for quarter
-                      if (activeSheetId) {
-                        await submitQuarterlyCheckin(activeSheetId, quarter, actuals);
-                      }
-                      if (btn) {
-                        btn.innerText = 'Success!';
-                        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-                        setTimeout(() => {
-                          btn.innerText = 'Submit Check-in';
-                          btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
-                        }, 3000);
-                      }
-                    } catch (error) {
-                      console.error(error);
-                      alert('Failed to submit check-in to Firebase.');
-                      if (btn) btn.innerText = 'Submit Check-in';
-                    }
-                  }}
-                  id="checkin-btn"
+                  onClick={handleCheckin}
+                  disabled={!activeCycle.isCheckinOpen}
                 >
                   <CheckCircle size={18} />
                   Submit Check-in

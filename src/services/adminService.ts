@@ -106,3 +106,9 @@ export const revertSheetToDraft = async (sheetId: string, notes: string = 'Rever
     updatedAt: new Date()
   });
 };
+
+export const updateCycleConfig = async (config: any): Promise<void> => {
+  const docRef = doc(db, 'system_config', 'activeCycle');
+  // @ts-ignore
+  await updateDoc(docRef, config);
+};

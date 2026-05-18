@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ShieldAlert, Download, Activity, FileSpreadsheet, RefreshCcw, Users, Edit2, Save, Target, Unlock, X } from 'lucide-react';
-import { fetchQuarterlyCompliance, exportPerformanceCSV, fetchAllUsers, updateUser, fetchApprovedSheets, revertSheetToDraft } from '../../services/adminService';
+import { ShieldAlert, Download, Activity, FileSpreadsheet, RefreshCcw, Users, Edit2, Save, Target, Unlock, X, CalendarClock } from 'lucide-react';
+import { fetchQuarterlyCompliance, exportPerformanceCSV, fetchAllUsers, updateUser, fetchApprovedSheets, revertSheetToDraft, updateCycleConfig } from '../../services/adminService';
+import { useCycle } from '../../context/CycleContext';
 import type { UserProfile, Goal } from '../../types';
 
 export default function AdminDashboard() {
@@ -19,13 +20,23 @@ export default function AdminDashboard() {
   const [revertNotes, setRevertNotes] = useState('');
   const [isReverting, setIsReverting] = useState(false);
 
+  // Cycle Context
+  const { activeCycle } = useCycle();
+  const [isSavingCycle, setIsSavingCycle] = useState(false);
+  const [cycleForm, setCycleForm] = useState(activeCycle);
+
+  // Sync local form when global context updates
+  useEffect(() => {
+    setCycleForm(activeCycle);
+  }, [activeCycle]);
+
   const loadStats = async () => {
     setLoading(true);
     try {
       const [data, usersData, sheetsData] = await Promise.all([
-        fetchQuarterlyCompliance(),
+        fetchQuarterlyCompliance(activeCycle.fiscalYear),
         fetchAllUsers(),
-        fetchApprovedSheets()
+        fetchApprovedSheets(activeCycle.fiscalYear)
       ]);
       setStats(data);
       setUsers(usersData as UserProfile[]);
@@ -39,12 +50,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [activeCycle.fiscalYear]);
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      await exportPerformanceCSV('FY26');
+      await exportPerformanceCSV(activeCycle.fiscalYear);
     } catch (error) {
       console.error("Export failed", error);
       alert("Failed to export CSV data. Check console for details.");
@@ -80,6 +91,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSaveCycle = async () => {
+    setIsSavingCycle(true);
+    try {
+      await updateCycleConfig(cycleForm);
+    } catch (e) {
+      console.error("Failed to update cycle", e);
+      alert("Failed to update cycle configuration.");
+    } finally {
+      setIsSavingCycle(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in duration-300">
       
@@ -105,7 +128,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity size={20} className="text-purple-400" />
-              FY26 Compliance Status
+              {activeCycle.fiscalYear} Compliance Status
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
@@ -159,7 +182,7 @@ export default function AdminDashboard() {
             <div className="p-5 rounded-xl border border-slate-700/50 bg-slate-800/30 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-semibold text-slate-200">FY26 Performance Report</h4>
+                  <h4 className="font-semibold text-slate-200">{activeCycle.fiscalYear} Performance Report</h4>
                   <p className="text-xs text-slate-500 mt-1">Includes all finalized metrics and raw scores.</p>
                 </div>
                 <Button 
@@ -178,6 +201,77 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Global Cycle Management Card */}
+      <Card className="border-amber-500/20 bg-slate-900/60 shadow-lg shadow-amber-500/5 mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarClock size={20} className="text-amber-400" />
+            Global Cycle Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Active Fiscal Year</label>
+              <input 
+                type="text" 
+                value={cycleForm.fiscalYear} 
+                onChange={(e) => setCycleForm({...cycleForm, fiscalYear: e.target.value})}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Active Check-in Quarter</label>
+              <select 
+                value={cycleForm.activeQuarter}
+                onChange={(e) => setCycleForm({...cycleForm, activeQuarter: e.target.value})}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-amber-500"
+              >
+                <option value="q1">Q1 (Apr - Jun)</option>
+                <option value="q2">Q2 (Jul - Sep)</option>
+                <option value="q3">Q3 (Oct - Dec)</option>
+                <option value="q4">Q4 (Jan - Mar)</option>
+              </select>
+            </div>
+
+            <div className="space-y-2 flex flex-col justify-center">
+              <label className="text-sm font-medium text-slate-400 mb-2">Goal Setting Phase</label>
+              <button 
+                onClick={() => setCycleForm({...cycleForm, isGoalSettingOpen: !cycleForm.isGoalSettingOpen})}
+                className={`w-full py-2 rounded font-bold text-xs uppercase tracking-wider transition-colors ${
+                  cycleForm.isGoalSettingOpen ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                }`}
+              >
+                {cycleForm.isGoalSettingOpen ? 'Unlocked (Open)' : 'Locked (Closed)'}
+              </button>
+            </div>
+
+            <div className="space-y-2 flex flex-col justify-center">
+              <label className="text-sm font-medium text-slate-400 mb-2">Quarterly Check-in Phase</label>
+              <button 
+                onClick={() => setCycleForm({...cycleForm, isCheckinOpen: !cycleForm.isCheckinOpen})}
+                className={`w-full py-2 rounded font-bold text-xs uppercase tracking-wider transition-colors ${
+                  cycleForm.isCheckinOpen ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'
+                }`}
+              >
+                {cycleForm.isCheckinOpen ? 'Unlocked (Open)' : 'Locked (Closed)'}
+              </button>
+            </div>
+          </div>
+          
+          <div className="mt-6 flex justify-end pt-4 border-t border-slate-800">
+            <Button 
+              onClick={handleSaveCycle} 
+              disabled={isSavingCycle}
+              className="bg-amber-600 hover:bg-amber-500 text-white gap-2"
+            >
+              <Save size={16} /> {isSavingCycle ? 'Saving...' : 'Save Cycle Configuration'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* HR User Management Card */}
       <Card className="border-blue-500/20 bg-slate-900/60 shadow-lg shadow-blue-500/5 mt-8">
