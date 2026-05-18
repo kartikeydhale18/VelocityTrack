@@ -6,8 +6,7 @@ export const fetchAllEmployeeGoalSheets = async (employeeId: string, fiscalYear:
   const q = query(
     collection(db, "goalSheets"),
     where("employeeId", "==" , employeeId),
-    where("fiscalYear", "==", fiscalYear),
-    orderBy("submittedAt", "desc")
+    where("fiscalYear", "==", fiscalYear)
   );
   
   const snap = await getDocs(q);
@@ -29,6 +28,13 @@ export const fetchAllEmployeeGoalSheets = async (employeeId: string, fiscalYear:
       goals: goalsData
     });
   }
+  
+  // Sort locally to avoid requiring a composite index in Firestore
+  sheets.sort((a, b) => {
+    const timeA = a.submittedAt?.toMillis() || 0;
+    const timeB = b.submittedAt?.toMillis() || 0;
+    return timeB - timeA; // Descending
+  });
   
   return sheets;
 };
