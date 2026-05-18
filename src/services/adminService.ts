@@ -29,15 +29,22 @@ export const exportPerformanceCSV = async (fiscalYear: string) => {
   const q = query(collection(db, "goalSheets"), where("fiscalYear", "==", fiscalYear));
   const querySnapshot = await getDocs(q);
   
-  // We no longer need the 'data:text/csv' prefix because the Blob handles the file typing!
-  let csvContent = "Goal Sheet ID,Employee ID,Manager ID,Status,Total Weightage,Goal Count\n";
+  // Fetch users for name resolution
+  const usersRef = collection(db, "users");
+  const usersSnap = await getDocs(usersRef);
+  const userMap: Record<string, string> = {};
+  usersSnap.forEach(u => {
+    userMap[u.id] = u.data().name || u.data().email || u.id;
+  });
+
+  let csvContent = "Goal Sheet ID,Employee Name,Manager Name,Status,Total Weightage,Goal Count\n";
   
   querySnapshot.forEach((docSnap) => {
     const data = docSnap.data();
     const row = [
       docSnap.id,
-      data.employeeId || 'N/A',
-      data.managerId || 'N/A',
+      userMap[data.employeeId] || data.employeeId || 'N/A',
+      userMap[data.managerId] || data.managerId || 'N/A',
       data.status || 'N/A',
       data.totalWeightage || 0,
       data.goalCount || 0
@@ -78,14 +85,24 @@ export const updateUser = async (uid: string, updates: any): Promise<void> => {
 export const fetchApprovedSheets = async (): Promise<any[]> => {
   const q = query(collection(db, 'goalSheets'), where('status', '==', 'approved'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  const sheets = [];
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    const goalsRef = collection(db, `goalSheets/${docSnap.id}/goals`);
+    const goalsSnap = await getDocs(goalsRef);
+    const goalsData = goalsSnap.docs.map(g => ({ id: g.id, ...g.data() }));
+    sheets.push({ id: docSnap.id, ...data, goals: goalsData });
+  }
+  
+  return sheets;
 };
 
-export const revertSheetToDraft = async (sheetId: string): Promise<void> => {
+export const revertSheetToDraft = async (sheetId: string, notes: string = 'Reverted to draft by HR/Admin for corrections.'): Promise<void> => {
   const sheetRef = doc(db, 'goalSheets', sheetId);
   await updateDoc(sheetRef, {
     status: 'draft',
-    managerNotes: 'Reverted to draft by HR/Admin for corrections.',
+    managerNotes: notes,
     updatedAt: new Date()
   });
 };

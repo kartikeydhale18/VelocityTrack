@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ShieldAlert, Download, Activity, FileSpreadsheet, RefreshCcw, Users, Edit2, Save, Target, Unlock } from 'lucide-react';
+import { ShieldAlert, Download, Activity, FileSpreadsheet, RefreshCcw, Users, Edit2, Save, Target, Unlock, X } from 'lucide-react';
 import { fetchQuarterlyCompliance, exportPerformanceCSV, fetchAllUsers, updateUser, fetchApprovedSheets, revertSheetToDraft } from '../../services/adminService';
 import type { UserProfile, Goal } from '../../types';
 
@@ -13,6 +13,11 @@ export default function AdminDashboard() {
   const [approvedSheets, setApprovedSheets] = useState<any[]>([]);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+
+  // Review Modal State
+  const [reviewSheet, setReviewSheet] = useState<any | null>(null);
+  const [revertNotes, setRevertNotes] = useState('');
+  const [isReverting, setIsReverting] = useState(false);
 
   const loadStats = async () => {
     setLoading(true);
@@ -56,6 +61,22 @@ export default function AdminDashboard() {
     } catch (e) {
       console.error("Failed to update user", e);
       alert("Failed to update user details.");
+    }
+  };
+
+  const handleRevert = async () => {
+    if (!reviewSheet) return;
+    setIsReverting(true);
+    try {
+      await revertSheetToDraft(reviewSheet.id, revertNotes);
+      setApprovedSheets(approvedSheets.filter(s => s.id !== reviewSheet.id));
+      setReviewSheet(null);
+      setRevertNotes('');
+    } catch (e) {
+      console.error("Failed to revert", e);
+      alert("Failed to revert sheet.");
+    } finally {
+      setIsReverting(false);
     }
   };
 
@@ -308,15 +329,13 @@ export default function AdminDashboard() {
                   </div>
                   <Button 
                     variant="secondary" 
-                    onClick={async () => {
-                      if(confirm("Revert this approved sheet back to Draft mode? The employee will be able to edit it again.")) {
-                        await revertSheetToDraft(sheet.id);
-                        setApprovedSheets(approvedSheets.filter(s => s.id !== sheet.id));
-                      }
+                    onClick={() => {
+                      setReviewSheet(sheet);
+                      setRevertNotes('');
                     }}
                     className="gap-2 text-amber-400 hover:text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
                   >
-                    <Unlock size={16} /> Unlock for Editing
+                    <Unlock size={16} /> Review & Unlock
                   </Button>
                 </div>
               ))
@@ -324,6 +343,67 @@ export default function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Review Modal */}
+      {reviewSheet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <Card className="w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border-slate-700 shadow-2xl">
+            <CardHeader className="border-b border-slate-800 flex flex-row items-center justify-between">
+              <CardTitle className="text-amber-400 flex items-center gap-2">
+                <Target size={20} /> Review Goal Sheet Before Reverting
+              </CardTitle>
+              <button onClick={() => setReviewSheet(null)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </CardHeader>
+            <CardContent className="overflow-y-auto p-6 flex-1 space-y-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {reviewSheet.goals?.map((goal: Goal) => (
+                  <div key={goal.id} className="p-4 rounded-xl border border-slate-700/50 bg-slate-800/40">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                        {goal.thrustArea}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded">
+                        {goal.weightage}% Weight
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-slate-200 mb-1 leading-snug">{goal.title}</h4>
+                    <p className="text-slate-400 text-sm mb-3 line-clamp-2">{goal.description}</p>
+                    <div className="text-xs text-slate-500 border-t border-slate-700/50 pt-2">
+                      Target: <span className="text-blue-400 font-bold">{goal.target} {goal.unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-slate-800">
+                <label className="block text-sm font-medium text-slate-300">Revert Reason / Notes (Visible to Employee)</label>
+                <textarea 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-amber-500 min-h-[100px]"
+                  placeholder="Explain what needs to be fixed..."
+                  value={revertNotes}
+                  onChange={e => setRevertNotes(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-4 pt-2">
+                <Button variant="secondary" onClick={() => setReviewSheet(null)}>Cancel</Button>
+                <Button 
+                  onClick={handleRevert} 
+                  disabled={isReverting || !revertNotes}
+                  className="bg-amber-600 hover:bg-amber-500 text-white gap-2"
+                >
+                  <Unlock size={16} /> {isReverting ? 'Reverting...' : 'Revert to Draft'}
+                </Button>
+              </div>
+
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

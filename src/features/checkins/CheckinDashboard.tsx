@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Lock, Unlock, Calendar, TrendingUp, CheckCircle, BarChart3, Loader2 } from 'lucide-react';
 import type { Goal } from '../../types';
 import { fetchActiveApprovedSheet } from '../../services/goalService';
+import { fetchAcceptedSharedTasks, updateAcceptedTaskStatus } from '../../services/sharedTaskService';
 import { useAuth } from '../../context/AuthContext';
 
 export default function CheckinDashboard() {
@@ -13,6 +14,7 @@ export default function CheckinDashboard() {
   const [loading, setLoading] = useState(true);
   const [actuals, setActuals] = useState<Record<string, string | number>>({});
   const [isWindowOpen, setIsWindowOpen] = useState(false);
+  const [acceptedSharedTasks, setAcceptedSharedTasks] = useState<any[]>([]);
 
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
 
@@ -20,7 +22,13 @@ export default function CheckinDashboard() {
     const loadGoals = async () => {
       setLoading(true);
       try {
-        const approvedData = await fetchActiveApprovedSheet(user!.uid, 'FY26');
+        const [approvedData, sharedTasks] = await Promise.all([
+          fetchActiveApprovedSheet(user!.uid, 'FY26'),
+          fetchAcceptedSharedTasks(user!.uid)
+        ]);
+        
+        setAcceptedSharedTasks(sharedTasks);
+
         if (approvedData && approvedData.goals) {
           setGoals(approvedData.goals);
           setActiveSheetId(approvedData.id);
@@ -272,6 +280,49 @@ export default function CheckinDashboard() {
         </div>
 
       </div>
+      {/* Checkin Modals and the rest */}
+      
+      {/* Accepted Shared Tasks Section */}
+      {acceptedSharedTasks.length > 0 && (
+        <div className="mt-12 space-y-4">
+          <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
+            <CheckCircle className="text-blue-400" />
+            Accepted Shared Tasks
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {acceptedSharedTasks.map(task => (
+              <div key={task.id} className="p-5 rounded-xl border border-slate-700 bg-slate-900/60 shadow-lg">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
+                    {task.department}
+                  </span>
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${
+                    task.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {task.status || 'In Progress'}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-200 mb-2">{task.title}</h3>
+                <p className="text-slate-400 text-sm mb-4 line-clamp-2">{task.description}</p>
+                <Button 
+                  onClick={async () => {
+                    const newStatus = task.status === 'Completed' ? 'In Progress' : 'Completed';
+                    await updateAcceptedTaskStatus(user!.uid, task.id, newStatus);
+                    setAcceptedSharedTasks(acceptedSharedTasks.map(t => 
+                      t.id === task.id ? { ...t, status: newStatus } : t
+                    ));
+                  }}
+                  variant={task.status === 'Completed' ? 'secondary' : 'default'}
+                  className={`w-full gap-2 ${task.status === 'Completed' ? '' : 'bg-emerald-600 hover:bg-emerald-500'}`}
+                >
+                  <CheckCircle size={16} /> 
+                  {task.status === 'Completed' ? 'Mark In Progress' : 'Mark Completed'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

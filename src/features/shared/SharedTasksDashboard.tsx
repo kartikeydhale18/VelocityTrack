@@ -4,16 +4,18 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
-import { Briefcase, Plus, Trash2, Globe, Building2 } from 'lucide-react';
-import { fetchSharedTasks, createSharedTask, deleteSharedTask } from '../../services/sharedTaskService';
+import { Briefcase, Plus, Trash2, Globe, Building2, CheckCircle2 } from 'lucide-react';
+import { fetchSharedTasks, createSharedTask, deleteSharedTask, fetchAcceptedSharedTasks, acceptSharedTask } from '../../services/sharedTaskService';
 import type { SharedTask } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SharedTasksDashboard() {
   const { role, user } = useAuth();
   const [tasks, setTasks] = useState<SharedTask[]>([]);
+  const [acceptedTasks, setAcceptedTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [isAccepting, setIsAccepting] = useState<string | null>(null);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -23,8 +25,12 @@ export default function SharedTasksDashboard() {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      const data = await fetchSharedTasks();
+      const [data, acceptedData] = await Promise.all([
+        fetchSharedTasks(),
+        user ? fetchAcceptedSharedTasks(user.uid) : Promise.resolve([])
+      ]);
       setTasks(data);
+      setAcceptedTasks(acceptedData);
     } catch (e) {
       console.error("Failed to load shared tasks", e);
     } finally {
@@ -34,7 +40,7 @@ export default function SharedTasksDashboard() {
 
   useEffect(() => {
     loadTasks();
-  }, []);
+  }, [user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +71,21 @@ export default function SharedTasksDashboard() {
       loadTasks();
     } catch (e) {
       console.error("Failed to delete", e);
+    }
+  };
+
+  const handleAcceptTask = async (task: SharedTask) => {
+    if (!user) return;
+    setIsAccepting(task.id);
+    try {
+      await acceptSharedTask(user.uid, task);
+      const updatedAccepted = await fetchAcceptedSharedTasks(user.uid);
+      setAcceptedTasks(updatedAccepted);
+    } catch (e) {
+      console.error("Failed to accept task", e);
+      alert("Failed to accept task");
+    } finally {
+      setIsAccepting(null);
     }
   };
 
@@ -135,33 +156,59 @@ export default function SharedTasksDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tasks.map(task => (
-            <Card key={task.id} className="border-slate-700 bg-slate-900/60 hover:border-slate-600 transition-colors group">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
-                    task.department === 'Global' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                  }`}>
-                    {task.department === 'Global' ? <Globe size={12} /> : <Building2 size={12} />}
-                    {task.department}
+          {tasks.map(task => {
+            const isAccepted = acceptedTasks.some(at => at.taskId === task.id);
+            
+            return (
+              <Card key={task.id} className={`border-slate-700 bg-slate-900/60 transition-colors group ${isAccepted ? 'border-emerald-500/30' : 'hover:border-slate-600'}`}>
+                <CardContent className="p-6 flex flex-col h-full">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                      task.department === 'Global' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                    }`}>
+                      {task.department === 'Global' ? <Globe size={12} /> : <Building2 size={12} />}
+                      {task.department}
+                    </div>
+                    {(role === 'manager' || role === 'admin') && (
+                      <button 
+                        onClick={() => handleDelete(task.id)}
+                        className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
-                  {(role === 'manager' || role === 'admin') && (
-                    <button 
-                      onClick={() => handleDelete(task.id)}
-                      className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-                <h3 className="text-lg font-bold text-slate-200 mb-2 leading-tight">{task.title}</h3>
-                <p className="text-slate-400 text-sm mb-4 line-clamp-3">{task.description}</p>
-                <div className="text-xs text-slate-500 pt-4 border-t border-slate-800">
-                  Broadcasted by: <span className="text-slate-300">{task.createdBy}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <h3 className="text-lg font-bold text-slate-200 mb-2 leading-tight">{task.title}</h3>
+                  <p className="text-slate-400 text-sm mb-4 flex-1 line-clamp-3">{task.description}</p>
+                  
+                  <div className="mt-auto space-y-4 pt-4 border-t border-slate-800">
+                    <div className="text-xs text-slate-500 flex justify-between items-center">
+                      <span>Broadcasted by: <span className="text-slate-300">{task.createdBy}</span></span>
+                    </div>
+                    
+                    {role === 'employee' && (
+                      <Button 
+                        onClick={() => handleAcceptTask(task)}
+                        disabled={isAccepted || isAccepting === task.id}
+                        className={`w-full gap-2 ${
+                          isAccepted ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20' : ''
+                        }`}
+                        variant={isAccepted ? 'secondary' : 'default'}
+                      >
+                        {isAccepted ? (
+                          <><CheckCircle2 size={16} /> Accepted & Added to Check-in</>
+                        ) : isAccepting === task.id ? (
+                          'Accepting...'
+                        ) : (
+                          <><Plus size={16} /> Accept Shared Task</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
