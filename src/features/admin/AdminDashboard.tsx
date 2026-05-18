@@ -152,15 +152,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="p-5 rounded-xl border border-slate-700/50 bg-slate-800/30 opacity-50 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-slate-200">Audit Trail Logs</h4>
-                  <p className="text-xs text-slate-500 mt-1">Requires full authentication system.</p>
-                </div>
-                <Button disabled variant="secondary">Locked</Button>
-              </div>
-            </div>
+
 
           </CardContent>
         </Card>
