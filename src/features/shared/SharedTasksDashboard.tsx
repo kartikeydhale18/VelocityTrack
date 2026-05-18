@@ -186,24 +186,22 @@ export default function SharedTasksDashboard() {
                       <span>Broadcasted by: <span className="text-slate-300">{task.createdBy}</span></span>
                     </div>
                     
-                    {role === 'employee' && (
-                      <Button 
-                        onClick={() => handleAcceptTask(task)}
-                        disabled={isAccepted || isAccepting === task.id}
-                        className={`w-full gap-2 ${
-                          isAccepted ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20' : ''
-                        }`}
-                        variant={isAccepted ? 'secondary' : 'default'}
-                      >
-                        {isAccepted ? (
-                          <><CheckCircle2 size={16} /> Accepted & Added to Check-in</>
-                        ) : isAccepting === task.id ? (
-                          'Accepting...'
-                        ) : (
-                          <><Plus size={16} /> Accept Shared Task</>
-                        )}
-                      </Button>
-                    )}
+                    <Button 
+                      onClick={() => handleAcceptTask(task)}
+                      disabled={isAccepted || isAccepting === task.id}
+                      className={`w-full gap-2 ${
+                        isAccepted ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20' : ''
+                      }`}
+                      variant={isAccepted ? 'secondary' : 'default'}
+                    >
+                      {isAccepted ? (
+                        <><CheckCircle2 size={16} /> Accepted & Added to Check-in</>
+                      ) : isAccepting === task.id ? (
+                        'Accepting...'
+                      ) : (
+                        <><Plus size={16} /> Accept Shared Task</>
+                      )}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
