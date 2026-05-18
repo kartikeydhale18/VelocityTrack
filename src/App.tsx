@@ -41,7 +41,7 @@ function AppContent() {
     return <LoginScreen />;
   }
 
-  if (!user.department) {
+  if (!user.department || user.department === 'Unassigned') {
     return <OnboardingModal user={user as any} onComplete={updateUserProfile} />;
   }
 
