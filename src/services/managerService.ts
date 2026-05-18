@@ -20,8 +20,13 @@ export const fetchPendingSheets = async (): Promise<PendingSheet[]> => {
   const querySnapshot = await getDocs(q);
   const sheets: PendingSheet[] = [];
   
-  querySnapshot.forEach((docSnap) => {
+  for (const docSnap of querySnapshot.docs) {
     const data = docSnap.data();
+    
+    const goalsRef = collection(db, `goalSheets/${docSnap.id}/goals`);
+    const goalsSnap = await getDocs(goalsRef);
+    const goalsData = goalsSnap.docs.map(g => ({ id: g.id, ...g.data() }));
+
     sheets.push({
       id: docSnap.id,
       employeeId: data.employeeId,
@@ -29,9 +34,9 @@ export const fetchPendingSheets = async (): Promise<PendingSheet[]> => {
       totalWeightage: data.totalWeightage,
       goalCount: data.goalCount,
       submittedAt: data.submittedAt,
-      goals: data.goals || []
+      goals: goalsData
     });
-  });
+  }
   
   return sheets;
 };
