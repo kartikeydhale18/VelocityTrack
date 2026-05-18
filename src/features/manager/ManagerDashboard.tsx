@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
-import { CheckCircle, Clock, AlertTriangle, UserCheck, XCircle, MessageSquare } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, UserCheck, XCircle, ChevronDown, ChevronUp, Target } from 'lucide-react';
 import { fetchPendingSheets, approveGoalSheet, rejectGoalSheet, type PendingSheet } from '../../services/managerService';
 import { fetchAllUsers } from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
@@ -15,6 +15,7 @@ export default function ManagerDashboard() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [expandedSheets, setExpandedSheets] = useState<Record<string, boolean>>({});
 
   const loadPendingSheets = async () => {
     setLoading(true);
@@ -122,6 +123,43 @@ export default function ManagerDashboard() {
                         onChange={(e) => setNotes({...notes, [sheet.id]: e.target.value})}
                         className="h-20 bg-slate-800/50"
                       />
+                    </div>
+                    
+                    <div className="mt-4 border-t border-slate-700/50 pt-4">
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={() => setExpandedSheets(prev => ({ ...prev, [sheet.id]: !prev[sheet.id] }))}
+                        className="text-amber-400 hover:text-amber-300 gap-2 border-slate-700 bg-slate-800/50"
+                      >
+                        {expandedSheets[sheet.id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        {expandedSheets[sheet.id] ? 'Hide Goals' : 'Review Submitted Goals'}
+                      </Button>
+                      
+                      {expandedSheets[sheet.id] && (
+                        <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                          {sheet.goals?.map((goal: any, index: number) => (
+                            <div key={goal.id || index} className="p-4 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                              <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-semibold text-slate-200 flex items-center gap-2">
+                                  <Target size={14} className="text-amber-500" />
+                                  {goal.title}
+                                </h4>
+                                <span className="bg-slate-900 text-slate-300 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">
+                                  {goal.weightage}% Weight
+                                </span>
+                              </div>
+                              <p className="text-sm text-slate-400">{goal.description}</p>
+                              {goal.successCriteria && (
+                                <div className="mt-3 pt-3 border-t border-slate-700/30">
+                                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Success Criteria</p>
+                                  <p className="text-sm text-slate-300">{goal.successCriteria}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   

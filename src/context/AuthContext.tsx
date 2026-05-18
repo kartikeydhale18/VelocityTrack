@@ -3,14 +3,14 @@ import { auth, db } from '../config/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
-interface UserProfile extends User {
+type UserProfile = User & {
   role?: 'employee' | 'manager' | 'admin';
   department?: string;
   designation?: string;
-  phoneNumber?: string;
+  phoneNumber?: string | null;
   salary?: string | number;
   name?: string | null;
-}
+};
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsubSnapshot: () => void;
+    let unsubSnapshot: (() => void) | null = null;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {

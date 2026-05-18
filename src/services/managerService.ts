@@ -8,6 +8,7 @@ export interface PendingSheet {
   totalWeightage: number;
   goalCount: number;
   submittedAt: any;
+  goals: any[];
 }
 
 export const fetchPendingSheets = async (): Promise<PendingSheet[]> => {
@@ -27,7 +28,8 @@ export const fetchPendingSheets = async (): Promise<PendingSheet[]> => {
       fiscalYear: data.fiscalYear,
       totalWeightage: data.totalWeightage,
       goalCount: data.goalCount,
-      submittedAt: data.submittedAt
+      submittedAt: data.submittedAt,
+      goals: data.goals || []
     });
   });
   
